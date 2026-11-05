@@ -86,15 +86,45 @@ curl -s https://TARGET/robots.txt
 
 ### Tor
 
+Tor یک SOCKS5 روی پورت ۹۰۵۰ باز می‌کند. ابزارها را از آن رد می‌کنی.
+
 ```bash
-pkg install tor                      # ترموکس
-sudo apt install tor proxychains4    # کالی
-tor &                                # SOCKS روی 9050
-proxychains4 nmap -sT -Pn TARGET     # nmap با Tor باید -sT باشد، نه -sS
-proxychains4 curl https://TARGET
+pkg install tor proxychains4       # ترموکس
+sudo apt install tor proxychains4  # کالی
+
+tor &                              # روشن کردن، در پس‌زمینه
+curl -s ifconfig.me                # بدون Tor، آی‌پی واقعی
+proxychains4 curl -s ifconfig.me   # با Tor، آی‌پی خروجی Tor
 ```
 
-محدودیت: Tor برای `nmap -sS` کار نمی‌کند (SYN خام از SOCKS رد نمی‌شود). `-sT` بزن.
+اگر دو خط آخر دو آی‌پی متفاوت داد، Tor کار می‌کند.
+
+**نمونه‌ی واقعی:**
+
+```bash
+proxychains4 curl -s https://example.com
+proxychains4 nmap -sT -Pn example.com -p 80,443
+```
+
+**چرا `-sT` و `-Pn`:**
+
+- `-sT` — اتصال کامل TCP. `-sS` (SYN خام) از SOCKS رد نمی‌شود و با Tor کار نمی‌کند.
+- `-Pn` — پینگ ICMP از Tor رد نمی‌شود، پس nmap نباید اول پینگ بزند وگرنه می‌گوید هاست خاموش است.
+
+**در `proxychains4.conf` باید این باشد:**
+
+```bash
+sudo nano /etc/proxychains4.conf
+# آخر فایل:
+socks5 127.0.0.1 9050
+```
+
+**محدودیت‌ها:**
+
+- Tor کند است. برای اسکن انبوه مناسب نیست.
+- اکثر سایت‌های بزرگ exit node را بلاک می‌کنند → کپچا و ۴۰۳
+- `masscan` و `hping3` با Tor کار نمی‌کنند (بسته‌ی خام می‌فرستند)
+- برای آنها VPN یا VPS لازم است
 
 ### VPN
 
@@ -222,6 +252,34 @@ hack wifi-hack handshake --both        # هر دو روش
 hack android-hack camera --kali        # اجبار به روش کالی
 hack doctor                            # بررسی محیط
 ```
+### جای‌گذاری مقادیر
+
+هر جا در دستورها این کلمه‌ها را دیدی، **باید با مقدار واقعی عوضشان کنی**. اگر عین کلمه را بزنی، خطا می‌گیری.
+
+| جای‌نگهدار | معنی | نمونه |
+|---|---|---|
+| `TARGET` | دامنه‌ی هدف، بدون `https://` | `example.com` |
+| `URL` | آدرس کامل | `https://example.com/page?id=1` |
+| `IP` | آی‌پی هدف | `192.168.1.50` |
+| `PORT` | پورت سرویس | `443` |
+| `USER` | نام کاربری | `admin` |
+| `PASS` | رمز | `admin` |
+| `BSSID` | مک‌آدرس روتر | `AA:BB:CC:DD:EE:FF` |
+| `CHANNEL` | کانال وای‌فای | `6` |
+| `IFACE` | نام کارت شبکه | `wlan0` |
+| `SERVER` | آی‌پی سرور شنونده | `1.2.3.4` |
+| `WORDLIST` | مسیر وردلیست | `/usr/share/wordlists/rockyou.txt` |
+| `TOKEN` | توکن API | `abc123` |
+
+### نمونه‌ی درست و غلط
+
+| غلط | درست |
+|---|---|
+| `nmap -sV TARGET` | `nmap -sV example.com` |
+| `nuclei -u https://TARGET` | `nuclei -u https://example.com` |
+| `sqlmap -u "URL"` | `sqlmap -u "https://example.com/p.php?id=1"` |
+| `hydra ... ssh://IP` | `hydra ... ssh://192.168.1.50` |
+| `ffuf -u https://TARGET/FUZZ -w WORDLIST` | `ffuf -u https://example.com/FUZZ -w ~/wordlists/common.txt` |
 
 | پرچم | کار |
 |---|---|
