@@ -1,5 +1,3 @@
-cd ~/hack
-cat > install.sh <<'ENDOFFILE'
 #!/usr/bin/env bash
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -34,15 +32,20 @@ chmod +x "$ROOT/hack" "$ROOT/install.sh" 2>/dev/null || true
 find "$ROOT" -mindepth 2 -maxdepth 2 -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
 
 mkdir -p "$BIN"
-if $SUDO ln -sf "$ROOT/hack" "$BIN/hack" 2>/dev/null; then
-  log "دستور hack نصب شد — از هر جا: hack list"
+LINKED=0
+
+if $SUDO ln -sf "$ROOT/hack" "$BIN/hack" 2>/dev/null; then LINKED=1; fi
+if $SUDO ln -sf "$ROOT/hack" "$BIN/hk"   2>/dev/null; then LINKED=1; fi
+
+if (( LINKED )); then
+  log "دستور نصب شد. از هر جا:"
+  echo "  hack list"
+  echo "  hk list"
 else
   warn "لینک نشد. دستی بزن:"
   echo "  ln -sf $ROOT/hack $BIN/hack"
+  echo "  ln -sf $ROOT/hack $BIN/hk"
 fi
 
-log "نصب شد."
+log "نصب تمام شد."
 warn "Termux API را از F-Droid نصب کن وگرنه دوربین/میکروفن/موقعیت کار نمی‌کند"
-ENDOFFILE
-chmod +x install.sh
-bash install.sh
