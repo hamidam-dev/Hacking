@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 # hack — dispatcher
 set -uo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+ROOT="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
 VERSION="1.0.0"
 source "$ROOT/lib/common.sh"
 source "$ROOT/lib/detect.sh"
@@ -53,6 +61,7 @@ list_categories(){
 }
 
 doctor(){
+  echo "ریشه: $ROOT"
   echo "محیط: $(detect_env)"
   echo "کرنل: $(uname -srm)"
   local miss=0
