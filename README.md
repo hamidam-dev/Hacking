@@ -219,6 +219,47 @@ bash install.sh
 | password-hack | `hydra`، `hashcat`، `john`، `cupp` |
 | c2-hack | `msfvenom`، `msfconsole`، `ngrok` |
 
+### نکات نصب روی ترموکس
+
+بعضی بسته‌ها از مخزن رسمی ترموکس حذف شده‌اند. اینها با `pkg install` نصب نمی‌شوند:
+
+| بسته | راه |
+|---|---|
+| `hydra` | کالی با `proot-distro` |
+| `metasploit` | کالی با `proot-distro` |
+| `aircrack-ng` | بسته‌ی `.deb` از [مخزن جانشین](https://github.com/pitube08642/aircrack-ng-for-termux) |
+
+اگر پایتون ۳.۱۴ داری و `pip install` روی `cryptography` شکست خورد:
+
+```bash
+pkg install -y python-cryptography
+pip install mitmproxy
+```
+
+ساخت از سورس روی `i686` کند و شکننده است. نسخه‌ی آماده را ترجیح بده.
+
+#### کالی داخل ترموکس
+
+برای ابزارهای سنگین، به‌جای ساخت دستی:
+
+```bash
+pkg install -y proot-distro
+proot-distro install kali
+proot-distro login kali
+apt update
+apt install -y hydra metasploit-framework aircrack-ng
+```
+
+خروج: `exit`
+
+محدودیت: مانیتور مود در شبیه‌ساز همچنان کار نمی‌کند. `aircrack-ng` نصب می‌شود ولی وای‌فای واقعی ندارد.
+
+#### معماری ۳۲ بیتی
+
+`uname -m` اگر `i686` داد، انتظار شکست داشته باش. بیشتر ابزارهای گو و پایتون چرخ آماده ندارند.
+
+راه‌حل: شبیه‌ساز `x86_64` با اندروید ۱۱ یا بالاتر.
+
 ### بررسی سلامت محیط
 
 ```bash
