@@ -31,3 +31,4 @@ ln -sf "$ROOT/hack" "$BIN/hack" 2>/dev/null || warn "لینک نشد، دستی:
 
 log "نصب شد. اجرا: hack list"
 warn "Termux API را از F-Droid نصب کن وگرنه دوربین/میکروفن/موقعیت کار نمی‌کند"
+sed -i 's|"\$ROOT"/scripts/\*\.sh|"$ROOT"/*/*.sh|' install.sh
