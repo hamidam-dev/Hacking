@@ -1,5 +1,3 @@
-cd ~/hack
-cat > hack <<'ENDOFFILE'
 #!/usr/bin/env bash
 # hack — dispatcher
 set -uo pipefail
@@ -118,5 +116,3 @@ main(){
 }
 
 main "$@"
-ENDOFFILE
-chmod +x hack
