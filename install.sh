@@ -10,6 +10,7 @@ h1 "نصب hackit — محیط: $ENV"
 case "$ENV" in
 termux)
   pkg update -y
+  aircrack-ng hydra sqlmap
   pkg install -y root-repo x11-repo 2>/dev/null || true
   pkg install -y git curl jq python nmap openssh android-tools termux-api \
                  clang make which 2>/dev/null || warn "بعضی پکیج‌ها نصب نشد"
