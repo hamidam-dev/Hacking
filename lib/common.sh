@@ -1,4 +1,3 @@
-cat > lib/common.sh <<'ENDOFFILE'
 #!/usr/bin/env bash
 R='\033[0;31m'; G='\033[0;32m'; Y='\033[1;33m'; B='\033[0;36m'; M='\033[0;35m'; N='\033[0m'
 log(){ printf "${G}[+]${N} %s\n" "$*"; }
@@ -47,4 +46,3 @@ run_module(){
   echo
   [[ -n "${NOTE:-}" ]] && { printf "${Y}نکته:${N} %s\n" "$NOTE"; }
 }
-ENDOFFILE
