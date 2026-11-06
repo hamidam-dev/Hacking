@@ -1,23 +1,23 @@
+cat > wifi-hack/scan.sh <<'ENDOFFILE'
 DESC="اسکن شبکه‌های وای‌فای اطراف"
-REQ="کارت با مانیتور مود"
+REQ="Termux:API بدون روت، یا root با کارت سازگار"
 RISK="LOW"
+NOTE="بدون مانیتور مود فقط لیست شبکه‌ها را می‌بینی؛ برای هندشیک مانیتور مود لازم است"
 
 termux(){
-cat <<'EOF'
-# ترموکس روی گوشی روت‌شده
-su -c "ip link set wlan0 down"
-su -c "iw dev wlan0 set type monitor"
-su -c "ip link set wlan0 up"
-su -c "iw dev wlan0 scan" | grep -E 'SSID|signal|DS Parameter'
-EOF
+cat <<'INNER'
+termux-wifi-scaninfo | jq -r '.[] | "\(.ssid)  \(.bssid)  \(.frequency)"'
+# با روت:
+# su -c "iw dev wlan0 scan" | grep -E 'SSID|signal'
+INNER
 }
 
 kali(){
-cat <<'EOF'
+cat <<'INNER'
 sudo airmon-ng check kill
 sudo airmon-ng start wlan0
 sudo airodump-ng wlan0mon
-# ذخیره برای مراحل بعد:
-sudo airodump-ng wlan0mon -w scan --output-format csv
-EOF
+INNER
 }
+ENDOFFILE
+chmod +x wifi-hack/scan.sh
