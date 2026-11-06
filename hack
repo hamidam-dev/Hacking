@@ -1,3 +1,5 @@
+cd ~/hack
+cat > hack <<'ENDOFFILE'
 #!/usr/bin/env bash
 # hack — dispatcher
 set -uo pipefail
@@ -6,21 +8,22 @@ VERSION="1.0.0"
 source "$ROOT/lib/common.sh"
 source "$ROOT/lib/detect.sh"
 
-FORCE_ENV=""; RUN=0; BOTH=0
+FORCE_ENV=""; RUN=0; BOTH=0; HELP=0
+declare -a ARGS=()
 
 parse_flags(){
-  local args=()
-  for a in "$@"; do
-    case "$a" in
+  ARGS=()
+  while (( $# )); do
+    case "$1" in
       --termux) FORCE_ENV=termux ;;
       --kali)   FORCE_ENV=kali ;;
       --both)   BOTH=1 ;;
       --run)    RUN=1 ;;
-      -h|--help) usage; exit 0 ;;
-      *) args+=("$a") ;;
+      -h|--help) HELP=1 ;;
+      *) ARGS+=("$1") ;;
     esac
+    shift
   done
-  printf '%s\n' "${args[@]}"
 }
 
 usage(){
@@ -29,7 +32,7 @@ hack — جعبه‌ابزار تهاجمی
 
   hack list                فهرست دسته‌ها
   hack <دسته>              منوی ماژول‌های آن دسته
-  hack <دسته> <ماژول>      اجرای ماژول
+  hack <دسته> <ماژول>      نمایش دستورها
   hack <دسته> <ماژول> --both    هر دو روش (ترموکس + کالی)
   hack doctor              بررسی محیط و ابزارها
 
@@ -42,8 +45,6 @@ EOF
 }
 
 list_categories(){
-  printf '%s\n' "${!CAT_DESC[@]}" 2>/dev/null | sort
-  echo
   for d in "$ROOT"/*-hack; do
     [[ -d "$d" ]] || continue
     local c; c=$(basename "$d")
@@ -61,7 +62,8 @@ doctor(){
     [[ -z "$t" ]] && continue
     command -v "$t" >/dev/null && printf '  ok   %s\n' "$t" || { printf '  miss %s\n' "$t"; ((miss++)); }
   done < "$ROOT/conf/deps.txt"
-  echo; ((miss)) && warn "$miss ابزار نصب نیست — bash install.sh" || log "همه‌چیز آماده"
+  echo
+  if (( miss )); then warn "$miss ابزار نصب نیست — bash install.sh"; else log "همه‌چیز آماده"; fi
 }
 
 dispatch(){
@@ -89,6 +91,7 @@ menu(){
     ((i++)); keys+=("$k")
     printf '  %2d) %-18s %s\n' "$i" "$k" "$d"
   done < <(grep '^MODULES=' -A999 "$conf" 2>/dev/null | sed '1d' | sed '/^$/q')
+  if (( i == 0 )); then err "این دسته ماژول ندارد"; exit 1; fi
   echo
   printf ' شماره یا نام: '; read -r pick
   local sel=""
@@ -100,15 +103,20 @@ menu(){
 }
 
 main(){
-  local -a a; mapfile -t a < <(parse_flags "$@")
-  (( ${#a[@]} )) || { usage; exit 0; }
-  local cmd="${a[0]}"; unset 'a[0]'
+  parse_flags "$@"
+  (( HELP )) && { usage; exit 0; }
+  (( ${#ARGS[@]} )) || { usage; exit 0; }
+  local cmd="${ARGS[0]}"
+  local rest=()
+  (( ${#ARGS[@]} > 1 )) && rest=("${ARGS[@]:1}")
   case "$cmd" in
     list) list_categories ;;
     doctor) doctor ;;
     version) echo "$VERSION" ;;
-    *) dispatch "$cmd" "${a[@]}" ;;
+    *) dispatch "$cmd" "${rest[@]}" ;;
   esac
 }
 
 main "$@"
+ENDOFFILE
+chmod +x hack
