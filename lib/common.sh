@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+export PATH="$PATH:$HOME/.local/bin:/root/.local/bin:$HOME/go/bin:/root/go/bin"
+
 R='\033[0;31m'; G='\033[0;32m'; Y='\033[1;33m'; B='\033[0;36m'; M='\033[0;35m'; N='\033[0m'
 log(){ printf "${G}[+]${N} %s\n" "$*"; }
 warn(){ printf "${Y}[!]${N} %s\n" "$*"; }
@@ -18,7 +20,7 @@ _exec(){
   if (( RUN )); then
     echo; log "اجرا…"
     printf '%s\n' "$out" | grep -vE '^[[:space:]]*(#|$)' | bash
-    echo; warn "اگر خطا دیدی، جای‌نگهدارها (TARGET / IP / BSSID…) را پر کن"
+    echo; warn "اگر خطا دیدی، جای‌نگهدارها را پر کن"
   fi
   return 0
 }
