@@ -12,6 +12,34 @@ LOG="/tmp/hackit-install.log"
 
 pkg_ok(){ dpkg -s "$1" >/dev/null 2>&1; }
 
+fix_apt(){
+  log "بررسی سلامت apt"
+  $SUDO apt-get update >>"$LOG" 2>&1 || true
+  $SUDO dpkg --configure -a >>"$LOG" 2>&1 || true
+  $SUDO apt-get install -y --fix-broken >>"$LOG" 2>&1 || true
+  $SUDO apt-get -f install -y >>"$LOG" 2>&1 || true
+
+  if $SUDO apt-get check >/dev/null 2>&1; then
+    log "apt سالم است"
+    return 0
+  fi
+
+  warn "وابستگی خراب. تلاش برای تعمیر"
+  $SUDO apt-get install -y --allow-downgrades postgresql-client-common postgresql-common >>"$LOG" 2>&1 || true
+  $SUDO apt-get install -y --fix-broken >>"$LOG" 2>&1 || true
+  $SUDO apt full-upgrade -y >>"$LOG" 2>&1 || true
+
+  if $SUDO apt-get check >/dev/null 2>&1; then
+    log "apt تعمیر شد"
+    return 0
+  fi
+
+  err "apt هنوز خراب است. دستی بزن:"
+  echo "  apt-get install -y --allow-downgrades postgresql-client-common postgresql-common"
+  echo "  apt-get -f install -y"
+  return 1
+}
+
 apt_one(){
   local p="$1"
   pkg_ok "$p" && { log "از قبل: $p"; return 0; }
@@ -20,7 +48,7 @@ apt_one(){
     return 0
   fi
   warn "نصب نشد: $p"
-  grep -iE 'unable to locate|no installation candidate|unmet dep|broken' "$LOG" | tail -2
+  grep -iE 'unmet dep|unable to locate|broken' "$LOG" | tail -2
 }
 
 go_one(){
@@ -66,10 +94,7 @@ termux)
   if [[ $EUID -eq 0 ]]; then SUDO=""; else SUDO="sudo"; fi
   BIN="/usr/local/bin"
 
-  log "اصلاح وضعیت apt"
-  $SUDO apt-get update >>"$LOG" 2>&1 || warn "apt update مشکل داشت"
-  $SUDO dpkg --configure -a >>"$LOG" 2>&1 || true
-  $SUDO apt-get install -y --fix-broken >>"$LOG" 2>&1 || true
+  fix_apt || true
 
   for p in git curl wget jq python3 python3-pip pipx nmap hydra sqlmap \
            aircrack-ng adb scrcpy openssh-client net-tools dnsutils \
@@ -82,14 +107,11 @@ termux)
   fi
 
   if ! have frida; then
-    if pipx install frida-tools >>"$LOG" 2>&1; then
-      log "ok: frida"
-    elif pip install --break-system-packages -q frida-tools >>"$LOG" 2>&1; then
-      log "ok: frida (pip)"
-    else
-      warn "frida نصب نشد"
-    fi
+    if pipx install frida-tools >>"$LOG" 2>&1; then log "ok: frida"
+    elif pip install --break-system-packages -q frida-tools >>"$LOG" 2>&1; then log "ok: frida (pip)"
+    else warn "frida نصب نشد"; fi
   fi
+  pipx ensurepath >>"$LOG" 2>&1 || true
 
   if ! have msfconsole; then
     warn "Metasploit: https://www.kali.org/tools/metasploit-framework/"
@@ -104,7 +126,7 @@ termux)
     fi
   fi
 
-  export PATH="$PATH:$HOME/go/bin:/root/go/bin:/usr/lib/go/bin"
+  export PATH="$PATH:$HOME/go/bin:/root/go/bin:/usr/lib/go/bin:$HOME/.local/bin"
   go_one github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
   go_one github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
   go_one github.com/projectdiscovery/httpx/cmd/httpx@latest
@@ -123,7 +145,6 @@ if $SUDO ln -sf "$ROOT/hack" "$BIN/hk"   2>/dev/null; then LINKED=1; fi
 if (( LINKED )); then
   log "دستور نصب شد:"
   echo "  hack list"
-  echo "  hk list"
 else
   warn "لینک نشد:"
   echo "  ln -sf $ROOT/hack $BIN/hack"
@@ -132,7 +153,7 @@ fi
 echo
 if [[ -s "$LOG" ]]; then
   warn "خطاها در $LOG"
-  tail -15 "$LOG"
+  tail -10 "$LOG"
 else
   log "بدون خطا"
 fi
