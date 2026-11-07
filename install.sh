@@ -13,23 +13,33 @@ LOG="/tmp/hackit-install.log"
 export DEBIAN_FRONTEND=noninteractive
 APT="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold -o Acquire::Retries=3"
 
+SPIN=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+SPIN_COLORS=('\033[1;31m' '\033[1;33m' '\033[1;35m' '\033[1;36m' '\033[1;32m')
+
 pkg_ok(){ dpkg -s "$1" >/dev/null 2>&1; }
 
-run_apt(){
+run_wait(){
   local desc="$1"; shift
-  printf "  %s " "$desc"
-  $SUDO apt-get "$@" >>"$LOG" 2>&1 &
-  local pid=$!
-  while kill -0 "$pid" 2>/dev/null; do printf "."; sleep 3; done
+  local pid i=0 t=0 c f
+  "$@" >>"$LOG" 2>&1 &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    c="${SPIN_COLORS[$(( t / 10 % ${#SPIN_COLORS[@]} ))]}"
+    f="${SPIN[$(( i % ${#SPIN[@]} ))]}"
+    printf "\r  %b%s%b  %-28s %b%02ds%b " "$c" "$f" "$N" "$desc" "$Y" "$t" "$N"
+    sleep 0.5
+    i=$((i+1))
+    if (( i % 2 == 0 )); then t=$((t+1)); fi
+  done
   wait "$pid"
   local rc=$?
-  echo
-  return $rc
+  printf "\r\033[K"
+  return "$rc"
 }
 
 fix_apt(){
   log "بررسی سلامت apt"
-  run_apt "به‌روزرسانی فهرست" update
+  run_wait "به‌روزرسانی فهرست" $SUDO apt-get update
   $SUDO dpkg --configure -a >>"$LOG" 2>&1 || true
 
   if $SUDO apt-get check >/dev/null 2>&1; then
@@ -37,17 +47,17 @@ fix_apt(){
     return 0
   fi
 
-  warn "وابستگی خراب. تعمیر هدفمند (ممکن است چند دقیقه طول بکشد)"
-  run_apt "همگام‌سازی postgresql" install --allow-downgrades postgresql-client-common postgresql-common || true
-  run_apt "تعمیر وابستگی‌ها" -f install || true
+  warn "وابستگی خراب. تعمیر هدفمند"
+  run_wait "همگام‌سازی postgresql" $SUDO apt-get install $APT --allow-downgrades postgresql-client-common postgresql-common || true
+  run_wait "تعمیر وابستگی‌ها" $SUDO apt-get -f install $APT || true
 
   if $SUDO apt-get check >/dev/null 2>&1; then
     log "apt تعمیر شد"
     return 0
   fi
 
-  warn "ارتقای کامل (حجیم، صبر کن)"
-  run_apt "full-upgrade" full-upgrade || true
+  warn "ارتقای کامل، ممکن است چند دقیقه طول بکشد"
+  run_wait "full-upgrade" $SUDO apt-get full-upgrade $APT || true
 
   if $SUDO apt-get check >/dev/null 2>&1; then
     log "apt تعمیر شد"
@@ -63,7 +73,7 @@ fix_apt(){
 apt_one(){
   local p="$1"
   pkg_ok "$p" && { log "از قبل: $p"; return 0; }
-  if run_apt "$p" install $APT "$p"; then
+  if run_wait "نصب $p" $SUDO apt-get install $APT "$p"; then
     log "ok: $p"
     return 0
   fi
@@ -76,12 +86,11 @@ go_one(){
   local b="${m%%@*}"; b="${b##*/}"
   command -v "$b" >/dev/null 2>&1 && { log "از قبل: $b"; return 0; }
   command -v go >/dev/null 2>&1 || { warn "go نصب نیست، $b رد شد"; return 0; }
-  printf "  نصب %s " "$b"
-  GOMAXPROCS=2 go install "$m" >>"$LOG" 2>&1 &
-  local pid=$!
-  while kill -0 "$pid" 2>/dev/null; do printf "."; sleep 3; done
-  wait "$pid"
-  if (( $? == 0 )); then log "ok: $b"; else warn "نصب نشد: $b"; fi
+  if run_wait "نصب $b" env GOMAXPROCS=2 go install "$m"; then
+    log "ok: $b"
+  else
+    warn "نصب نشد: $b"
+  fi
 }
 
 : > "$LOG"
@@ -95,18 +104,21 @@ termux)
   for p in git curl wget jq python nmap openssh android-tools termux-api \
            clang make which golang rust binutils python-cryptography; do
     if pkg_ok "$p"; then log "از قبل: $p"
-    elif pkg install -y "$p" >>"$LOG" 2>&1; then log "ok: $p"
+    elif run_wait "نصب $p" pkg install -y "$p"; then log "ok: $p"
     else warn "نصب نشد: $p"; fi
   done
 
   if ! have aircrack-ng; then
-    ( cd "$HOME" && curl -fsLO "$AIRCRACK_DEB" && dpkg -i "$(basename "$AIRCRACK_DEB")" ) \
-      >>"$LOG" 2>&1 && log "ok: aircrack-ng" || warn "aircrack-ng نصب نشد"
+    if ( cd "$HOME" && curl -fsLO "$AIRCRACK_DEB" && dpkg -i "$(basename "$AIRCRACK_DEB")" ) >>"$LOG" 2>&1; then
+      log "ok: aircrack-ng"
+    else
+      warn "aircrack-ng نصب نشد"
+    fi
   fi
 
-  pip install --quiet sqlmap >>"$LOG" 2>&1 && log "ok: sqlmap" || warn "sqlmap نصب نشد"
-  pip install --quiet frida-tools objection >>"$LOG" 2>&1 && log "ok: frida" || warn "frida نصب نشد"
-  pip install --quiet mitmproxy >>"$LOG" 2>&1 && log "ok: mitmproxy" \
+  run_wait "نصب sqlmap" pip install --quiet sqlmap && log "ok: sqlmap" || warn "sqlmap نصب نشد"
+  run_wait "نصب frida" pip install --quiet frida-tools objection && log "ok: frida" || warn "frida نصب نشد"
+  run_wait "نصب mitmproxy" pip install --quiet mitmproxy && log "ok: mitmproxy" \
     || warn "mitmproxy نصب نشد — در debian proot نصب کن"
 
   export PATH="$PATH:$HOME/go/bin"
@@ -128,8 +140,8 @@ termux)
   done
 
   if ! have frida; then
-    if pipx install frida-tools >>"$LOG" 2>&1; then log "ok: frida"
-    elif pip install --break-system-packages -q frida-tools >>"$LOG" 2>&1; then log "ok: frida (pip)"
+    if run_wait "نصب frida" pipx install frida-tools; then log "ok: frida"
+    elif run_wait "نصب frida" pip install --break-system-packages -q frida-tools; then log "ok: frida"
     else warn "frida نصب نشد"; fi
   fi
   pipx ensurepath >>"$LOG" 2>&1 || true
@@ -139,8 +151,7 @@ termux)
   fi
 
   if ! have ngrok; then
-    if curl -fsSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip -o /tmp/n.zip \
-       && $SUDO unzip -o -q /tmp/n.zip -d /usr/local/bin; then
+    if run_wait "نصب ngrok" bash -c 'curl -fsSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip -o /tmp/n.zip && unzip -o -q /tmp/n.zip -d /usr/local/bin'; then
       log "ok: ngrok"
     else
       warn "ngrok نصب نشد (به توکن نیاز دارد)"
@@ -172,9 +183,10 @@ else
 fi
 
 echo
-if [[ -s "$LOG" ]]; then
-  warn "خطاها در $LOG"
-  tail -10 "$LOG"
+if grep -qiE 'unmet|unable to locate|error:|failed' "$LOG" 2>/dev/null; then
+  warn "خطاها:"
+  grep -iE 'unmet|unable to locate|error:|failed' "$LOG" | tail -8
+  echo "  گزارش کامل: $LOG"
 else
   log "بدون خطا"
 fi
