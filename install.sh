@@ -10,24 +10,44 @@ h1 "نصب hackit — محیط: $ENV"
 AIRCRACK_DEB="https://raw.githubusercontent.com/pitube08642/aircrack-ng-for-termux/main/dists/termux/aircrack-ng/binary-i686/aircrack-ng_3_1.7_i686.deb"
 LOG="/tmp/hackit-install.log"
 
+export DEBIAN_FRONTEND=noninteractive
+APT="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold -o Acquire::Retries=3"
+
 pkg_ok(){ dpkg -s "$1" >/dev/null 2>&1; }
+
+run_apt(){
+  local desc="$1"; shift
+  printf "  %s " "$desc"
+  $SUDO apt-get "$@" >>"$LOG" 2>&1 &
+  local pid=$!
+  while kill -0 "$pid" 2>/dev/null; do printf "."; sleep 3; done
+  wait "$pid"
+  local rc=$?
+  echo
+  return $rc
+}
 
 fix_apt(){
   log "بررسی سلامت apt"
-  $SUDO apt-get update >>"$LOG" 2>&1 || true
+  run_apt "به‌روزرسانی فهرست" update
   $SUDO dpkg --configure -a >>"$LOG" 2>&1 || true
-  $SUDO apt-get install -y --fix-broken >>"$LOG" 2>&1 || true
-  $SUDO apt-get -f install -y >>"$LOG" 2>&1 || true
 
   if $SUDO apt-get check >/dev/null 2>&1; then
     log "apt سالم است"
     return 0
   fi
 
-  warn "وابستگی خراب. تلاش برای تعمیر"
-  $SUDO apt-get install -y --allow-downgrades postgresql-client-common postgresql-common >>"$LOG" 2>&1 || true
-  $SUDO apt-get install -y --fix-broken >>"$LOG" 2>&1 || true
-  $SUDO apt full-upgrade -y >>"$LOG" 2>&1 || true
+  warn "وابستگی خراب. تعمیر هدفمند (ممکن است چند دقیقه طول بکشد)"
+  run_apt "همگام‌سازی postgresql" install --allow-downgrades postgresql-client-common postgresql-common || true
+  run_apt "تعمیر وابستگی‌ها" -f install || true
+
+  if $SUDO apt-get check >/dev/null 2>&1; then
+    log "apt تعمیر شد"
+    return 0
+  fi
+
+  warn "ارتقای کامل (حجیم، صبر کن)"
+  run_apt "full-upgrade" full-upgrade || true
 
   if $SUDO apt-get check >/dev/null 2>&1; then
     log "apt تعمیر شد"
@@ -43,7 +63,7 @@ fix_apt(){
 apt_one(){
   local p="$1"
   pkg_ok "$p" && { log "از قبل: $p"; return 0; }
-  if $SUDO apt-get install -y "$p" >>"$LOG" 2>&1; then
+  if run_apt "$p" install $APT "$p"; then
     log "ok: $p"
     return 0
   fi
@@ -56,7 +76,12 @@ go_one(){
   local b="${m%%@*}"; b="${b##*/}"
   command -v "$b" >/dev/null 2>&1 && { log "از قبل: $b"; return 0; }
   command -v go >/dev/null 2>&1 || { warn "go نصب نیست، $b رد شد"; return 0; }
-  if GOMAXPROCS=2 go install "$m" >>"$LOG" 2>&1; then log "ok: $b"; else warn "نصب نشد: $b"; fi
+  printf "  نصب %s " "$b"
+  GOMAXPROCS=2 go install "$m" >>"$LOG" 2>&1 &
+  local pid=$!
+  while kill -0 "$pid" 2>/dev/null; do printf "."; sleep 3; done
+  wait "$pid"
+  if (( $? == 0 )); then log "ok: $b"; else warn "نصب نشد: $b"; fi
 }
 
 : > "$LOG"
@@ -102,10 +127,6 @@ termux)
     apt_one "$p"
   done
 
-  if ! have go && pkg_ok golang-go; then
-    warn "go در PATH نیست. دستی: export PATH=\$PATH:/usr/lib/go/bin"
-  fi
-
   if ! have frida; then
     if pipx install frida-tools >>"$LOG" 2>&1; then log "ok: frida"
     elif pip install --break-system-packages -q frida-tools >>"$LOG" 2>&1; then log "ok: frida (pip)"
@@ -130,7 +151,7 @@ termux)
   go_one github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
   go_one github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
   go_one github.com/projectdiscovery/httpx/cmd/httpx@latest
-  go_one github.com/ffuf/ffuf/v2/cmd/ffuf@latest
+  go_one github.com/projectdiscovery/ffuf/v2/cmd/ffuf@latest
   ;;
 esac
 
