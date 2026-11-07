@@ -12,16 +12,33 @@ fi
 
 cd "$ROOT" || exit 1
 
+STASHED=0
 if [[ -n "$(git status --porcelain)" ]]; then
-  warn "تغییرات محلی داری. بکاپ گرفته می‌شود."
-  git stash push -u -m "auto-$(date +%s)" >/dev/null 2>&1 || true
+  warn "تغییرات محلی داری. موقتاً کنار گذاشته می‌شود."
+  if git stash push -u -m "auto-$(date +%s)" >/dev/null 2>&1; then
+    STASHED=1
+  else
+    err "stash شکست خورد"
+  fi
 fi
 
 if git pull --rebase; then
   log "به‌روزرسانی شد"
-  chmod +x "$ROOT/hack" "$ROOT/install.sh" 2>/dev/null || true
-  find "$ROOT" -mindepth 2 -maxdepth 2 -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
 else
   err "pull شکست خورد"
-  warn "تغییرات در stash مانده: git stash list"
 fi
+
+if (( STASHED )); then
+  if git stash pop >/dev/null 2>&1; then
+    log "تغییرات محلی برگردانده شد"
+  else
+    warn "تعارض داشت. تغییرات در stash مانده:"
+    echo "  git stash list"
+    echo "  git stash pop"
+  fi
+fi
+
+chmod +x "$ROOT/hack" "$ROOT/install.sh" "$ROOT/update.sh" 2>/dev/null || true
+find "$ROOT" -mindepth 2 -maxdepth 2 -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
+
+log "تمام شد."
