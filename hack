@@ -37,10 +37,14 @@ cat <<'EOF'
 hack — جعبه‌ابزار تهاجمی
 
   hack list                فهرست دسته‌ها
+  hack install             نصب خودکار همه ابزارها
+  hack doctor              بررسی محیط و ابزارها
+  hack update              به‌روزرسانی از مخزن
+
   hack <دسته>              منوی ماژول‌های آن دسته
   hack <دسته> <ماژول>      نمایش دستورها
   hack <دسته> <ماژول> --both    هر دو روش (ترموکس + کالی)
-  hack doctor              بررسی محیط و ابزارها
+  hack <دسته> <ماژول> --run     اجرای واقعی
 
 پرچم‌ها:
   --termux   اجبار به روش ترموکس
@@ -70,7 +74,7 @@ doctor(){
     command -v "$t" >/dev/null && printf '  ok   %s\n' "$t" || { printf '  miss %s\n' "$t"; ((miss++)); }
   done < "$ROOT/conf/deps.txt"
   echo
-  if (( miss )); then warn "$miss ابزار نصب نیست — bash install.sh"; else log "همه‌چیز آماده"; fi
+  if (( miss )); then warn "$miss ابزار نصب نیست — hack install"; else log "همه‌چیز آماده"; fi
 }
 
 dispatch(){
@@ -120,6 +124,8 @@ main(){
     list) list_categories ;;
     doctor) doctor ;;
     version) echo "$VERSION" ;;
+    install|setup) bash "$ROOT/install.sh" ;;      # ← این خط جدید
+    update) bash "$ROOT/update.sh" ;;              # ← این خط جدید
     *) dispatch "$cmd" "${rest[@]}" ;;
   esac
 }
